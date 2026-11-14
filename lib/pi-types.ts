@@ -63,6 +63,8 @@ export interface SessionStatsInfo {
     total: number;
   };
   cost: number;
+  /** 计费的 web_search / web_fetch 次数，见 SEARCH_CALL_FEE_CNY。 */
+  searchCalls: number;
   contextUsage?: ContextUsage;
   /** Estimated active time across all entries in the session file. */
   totalActiveMs?: number;
@@ -219,7 +221,8 @@ export interface AgentSessionLike {
   setThinkingLevel(level: string): void;
   compact(customInstructions?: string): Promise<unknown>;
   setSessionName(name: string): void;
-  getSessionStats(): Omit<SessionStatsInfo, "sessionName">;
+  /** pi 自己的统计没有搜索次数，它由 lib/session-stats 另外算。 */
+  getSessionStats(): Omit<SessionStatsInfo, "sessionName" | "searchCalls">;
   getLastAssistantText(): string | undefined;
   setAutoCompactionEnabled(enabled: boolean): void;
   setAutoRetryEnabled(enabled: boolean): void;

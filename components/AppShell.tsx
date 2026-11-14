@@ -76,6 +76,8 @@ import type { ChatInputHandle } from "./ChatInput";
 import type { AgentEndInfo, NewSessionChoices } from "@/hooks/useAgentSession";
 import type { SessionStatsInfo } from "@/lib/pi-types";
 import { formatActiveDuration, formatCompactCount, formatCostShort } from "@/lib/session-stats-format";
+import { formatMoney, fromCny, fromUsd, useCostDisplay } from "@/lib/cost-display";
+import { SEARCH_CALL_FEE_CNY } from "@/lib/session-stats";
 import type { FileViewerState } from "@/lib/file-viewer-state";
 import { PRESET_READ_ONLY, type ToolEntry } from "@/lib/tool-presets";
 import { createSideChat, deleteSideChat } from "@/lib/side-chat-client";
@@ -160,6 +162,8 @@ export function AppShell() {
   selectedSessionRef.current = selectedSession;
   const [sessionCatalog, setSessionCatalog] = useState<SessionInfo[]>([]);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
+  // 订阅费用货币设置，设置里改完顶栏和浮层跟着重渲染。
+  useCostDisplay();
   const handleSessionsChange = useCallback((sessions: SessionInfo[]) => {
     setSessionCatalog(sessions);
     setCatalogLoaded(true);
@@ -2094,7 +2098,7 @@ export function AppShell() {
       tooltipParts.push(`${translate("session.output")}: ${tokens.output.toLocaleString(locale)}`);
       tooltipParts.push(`${translate("session.cacheRead")}: ${tokens.cacheRead.toLocaleString(locale)}`);
       tooltipParts.push(`${translate("session.cacheWrite")}: ${tokens.cacheWrite.toLocaleString(locale)}`);
-      if (cost > 0) tooltipParts.push(`${translate("session.cost")}: $${cost.toFixed(4)}`);
+      if (cost > 0) tooltipParts.push(`${translate("session.cost")}: ${formatMoney(fromUsd(cost))}`);
     }
     if (contextUsage?.contextWindow) {
       const percent = contextUsage.percent;
@@ -2651,8 +2655,13 @@ export function AppShell() {
                        [translate("session.total"), sessionStats.tokens.total.toLocaleString(locale)],
                     ];
                     const ctx = contextUsage ?? sessionStats.contextUsage;
+                    const modelCost = fromUsd(sessionStats.cost);
+                    const searchCost = fromCny(sessionStats.searchCalls * SEARCH_CALL_FEE_CNY);
+                    const totalCost = modelCost + searchCost;
                     const extraTokenRows = [
-                       ...(sessionStats.cost > 0 ? [[translate("session.cost"), `$${sessionStats.cost.toFixed(4)}`]] : []),
+                       ...(sessionStats.cost > 0 ? [[translate("session.cost"), formatMoney(modelCost)]] : []),
+                       ...(sessionStats.searchCalls > 0 ? [[translate("session.searchCost"), formatMoney(searchCost)]] : []),
+                       ...(totalCost > 0 ? [[translate("session.totalCost"), formatMoney(totalCost)]] : []),
                        ...(ctx?.contextWindow ? [[translate("session.context"), `${ctx.percent !== null ? `${ctx.percent.toFixed(1)}%` : "?"} / ${formatCompactCount(ctx.contextWindow)}`]] : []),
                        // Cache hit rate = cache reads / (input + cache writes + cache reads) — the denominator covers all input-class tokens.
                        ...(sessionStats.tokens.cacheRead + sessionStats.tokens.cacheWrite > 0 && sessionStats.tokens.cacheRead + sessionStats.tokens.cacheWrite + sessionStats.tokens.input > 0

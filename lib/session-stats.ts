@@ -1,10 +1,18 @@
 import type { AgentMessage, AgentUsage, SessionContext, SessionEntry, SessionMessage } from "./types";
 
+/** DeepSeek Search/Fetch 按成功请求计费：5 元 / 1000 次。 */
+export const SEARCH_CALL_FEE_CNY = 0.005;
+
+// 走 DeepSeek 官方 Search/Fetch 接口的工具；两者的计费单价相同。
+const SEARCH_TOOL_NAMES = new Set(["web_search", "web_fetch"]);
+
 export interface SessionFileStats {
   userMessages: number;
   assistantMessages: number;
   toolCalls: number;
   toolResults: number;
+  /** 计费的搜索/抓取次数（成功的 web_search / web_fetch 调用）。 */
+  searchCalls: number;
   totalMessages: number;
   tokens: {
     input: number;
@@ -34,6 +42,7 @@ function emptyStats(): SessionFileStats {
     assistantMessages: 0,
     toolCalls: 0,
     toolResults: 0,
+    searchCalls: 0,
     totalMessages: 0,
     tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     cost: 0,
@@ -57,6 +66,7 @@ function addMessage(stats: SessionFileStats, message: SessionMessage): void {
     stats.userMessages += 1;
   } else if (message.role === "toolResult") {
     stats.toolResults += 1;
+    if (message.toolName && SEARCH_TOOL_NAMES.has(message.toolName) && !message.isError) stats.searchCalls += 1;
     addUsage(stats, message.usage);
   } else if (message.role === "assistant") {
     stats.assistantMessages += 1;
@@ -103,6 +113,7 @@ export function mergeSessionStats(
     assistantMessages: fileStats.assistantMessages + delta(current.assistantMessages, loaded.assistantMessages),
     toolCalls: fileStats.toolCalls + delta(current.toolCalls, loaded.toolCalls),
     toolResults: fileStats.toolResults + delta(current.toolResults, loaded.toolResults),
+    searchCalls: fileStats.searchCalls + delta(current.searchCalls, loaded.searchCalls),
     totalMessages: fileStats.totalMessages + delta(current.totalMessages, loaded.totalMessages),
     tokens,
     cost: fileStats.cost + delta(current.cost, loaded.cost),

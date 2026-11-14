@@ -779,8 +779,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       ? undefined
       : Math.max(snapshotActiveMs ?? 0, liveActiveMs ?? 0);
     if (sessionStatsOverride) {
+      // pi 的 /session 快照没有搜索统计，用当前消息补上。
+      const local = mergeSessionStats(undefined, [], messages);
       return {
         ...sessionStatsOverride,
+        searchCalls: local.searchCalls,
         totalActiveMs,
         ...(contextUsage ? { contextUsage } : {}),
       };

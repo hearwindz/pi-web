@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useChatAppearance";
 import { useEnterSendMode, setEnterSendMode } from "@/hooks/useEnterSendMode";
 import { useFilesPlacement, setFilesPlacement } from "@/hooks/useFilesPlacement";
+import { COST_RATE_MAX, COST_RATE_MIN, clampCostRate, setCostDisplay, useCostDisplay } from "@/lib/cost-display";
 import { sendAgentCommand } from "@/lib/agent-client";
 import type { ProjectTrustStatus, ToolSettingsResponse } from "@/lib/api-types";
 import { SETTINGS_BUILTIN_TOOLS } from "@/lib/tool-presets";
@@ -84,6 +85,8 @@ function GeneralSettings({ sessionId, onSessionReloaded, quoteSelectionEnabled, 
   const { width: chatContentWidth, setWidth: setChatContentWidth, fontSize, setFontSize } = useChatAppearance();
   const enterSendMode = useEnterSendMode();
   const filesPlacement = useFilesPlacement();
+  const costDisplay = useCostDisplay();
+  const setCostCurrency = (cny: boolean) => setCostDisplay({ currency: cny ? "cny" : "usd", rate: costDisplay.rate });
   const [shellSettings, setShellSettings] = useState<ToolSettingsResponse | null>(null);
   const [shellSaving, setShellSaving] = useState(false);
   const [shellError, setShellError] = useState<string | null>(null);
@@ -407,6 +410,32 @@ function GeneralSettings({ sessionId, onSessionReloaded, quoteSelectionEnabled, 
         </div>
         <p id="settings-cache-miss-notices-description" className="settings-general-description">{t("settings.cacheMissNoticesDescription")}</p>
         {cacheMissNoticesError && <p role="alert" className="settings-general-error">{cacheMissNoticesError}</p>}
+        <div className="settings-chat-options">
+          <div className="settings-chat-option settings-chat-switch-option">
+            <span>{t("settings.costCurrency")}</span>
+            <ConfigSwitch
+              checked={costDisplay.currency === "cny"}
+              label={t("settings.costCurrency")}
+              describedBy="settings-cost-currency-description"
+              onChange={setCostCurrency}
+            />
+          </div>
+          {costDisplay.currency === "cny" && (
+            <label className="settings-chat-option settings-chat-switch-option agents-concurrency-control">
+              <span>{t("settings.costRate")}</span>
+              <input
+                aria-label={t("settings.costRate")}
+                type="number"
+                min={COST_RATE_MIN}
+                max={COST_RATE_MAX}
+                step={0.1}
+                value={costDisplay.rate}
+                onChange={(event) => setCostDisplay({ currency: "cny", rate: clampCostRate(event.target.value) })}
+              />
+            </label>
+          )}
+        </div>
+        <p id="settings-cost-currency-description" className="settings-general-description">{t("settings.costCurrencyDescription")}</p>
       </section>
 
       <section className="settings-general-section">
